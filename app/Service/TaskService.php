@@ -4,6 +4,7 @@ namespace App\Service;
 
 use App\Models\Task;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class TaskService
 {
@@ -14,8 +15,13 @@ class TaskService
      */
     public function showDailyTask()
     {
-        $tasks = Task::where('user_id',Auth::id())
-                        ->get();
+        $cachKey = 'user.tasks_'.Auth::id();
+        $tasks = Cache::remember($cachKey,now()->addMinutes(60),function()
+        {
+           return Task::where('user_id',Auth::id())
+                       ->get();
+        });
+
         return $tasks;
     }
     /**
@@ -32,6 +38,7 @@ class TaskService
             'status' => $validated['status'],
             'user_id' => Auth::id()
         ]);
+       Cache::forget( 'user.tasks_'.Auth::id());
         return $task;
         
     }
@@ -47,6 +54,7 @@ class TaskService
         $task->description = $data['description']?? $task->description;
         $task->due_date = $data['due_date']?? $task->due_date;
         $task->save();
+        Cache::forget( 'user.tasks_'.Auth::id());
         return $task;      
     }
     /**
@@ -63,6 +71,7 @@ class TaskService
             $task->status = 'Pending';
         }
         $task->save();
+        Cache::forget( 'user.tasks_'.Auth::id());
     }
 
     public function showMulti(string $search)
